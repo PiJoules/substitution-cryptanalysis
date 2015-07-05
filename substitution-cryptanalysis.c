@@ -35,7 +35,6 @@ char* wordMatches(char* dictionary, char* format, int dictionarySize, int maxWor
 	int count = 0;
 	for (i = 0; i < dictionarySize; i++){
 		if (strMatchesFormat( dictionary+i*maxWordLength, format )){
-			//printf("word (%s) matches format (%s)\n", dictionary+i*maxWordLength, format);
 			matches = realloc( matches, ( (count+1)*maxWordLength )*sizeof(char) );
 			strncpy(matches + count*maxWordLength, dictionary+i*maxWordLength, maxWordLength);
 			count++;
@@ -68,6 +67,7 @@ void applyCipher(char* words, char cipher[26], char* wordsCopy, int wordCount, i
 		int len = strlen(words + i*maxWordLength);
 		for (j = 0; j < len; j++){
 			char c = *(words + i*maxWordLength + j);
+			*(wordsCopy + i*maxWordLength + j) = c;
 			if (isUpper(c)){
 				for (k = 0; k < 26; k++){
 					if (cipher[k] == c){
@@ -103,7 +103,7 @@ int formatExists(char* dictionary, char* word, int dictionarySize, int maxWordLe
 }
 
 /* Check if a given array of words exists. */
-int formatsExist(char* dictionary, char* words, int dictionarySize, int maxWordLength, int wordCount){
+int formatsDoExist(char* dictionary, char* words, int dictionarySize, int maxWordLength, int wordCount){
 	int i;
 	for (i = 0; i < wordCount; i++){
 		if (!formatExists(dictionary, words + i*maxWordLength, dictionarySize, maxWordLength)){
@@ -200,7 +200,7 @@ int main(){
 		return format in dictionary;
 	}
 
-	int formatsExists(words){
+	int formatsDoExists(words){
 		foreach (format in words){
 			if (!formarExists(format))
 				return 0;
@@ -275,6 +275,15 @@ int main(){
 
 				// The previously applied cipher does not result in any matches. Go back to that one and try again.
 				// Move back 1 index, but skip 1 this time.
+				int formatExists = formatsDoExist( (char*)dictionary, wordsCopy, DICTIONARYSIZE, MAXWORDLENGTH, wordCount );
+
+				printf("tested cipher: \n");
+				int l;
+				for (l = 0; l < 26; l++){
+					printf("(%c,%c) ", l+'a', cipher[l]);
+				}
+				printf("\n");
+
 				if (k == 26){
 					skips[wordOffsets[i]+j] = 0;
 					skips[wordOffsets[i]+j-1]++;
@@ -286,11 +295,24 @@ int main(){
 					j -= 2;
 				}
 				// Check if the words exist
-				else if (!formatsExist( (char*)dictionary, wordsCopy, DICTIONARYSIZE, MAXWORDLENGTH, wordCount )){
+				else if (!formatExists){
 					cipher[k] = 0;
 					skips[wordOffsets[i]+j]++;
 					j--; // repeat the current loop to apply a new cipher
 				}
+
+				printf("current cipher:\n");
+				for (l = 0; l < 26; l++){
+					printf("(%c,%c) ", l+'a', cipher[l]);
+				}
+				printf("\n");
+				printf("formatExists: %s\n", formatExists ? "true" : "false");
+				printf("skips: %d\n", skips[wordOffsets[i]+j+1]);
+				for (l = 0; l < wordCount; l++){
+					printf("word: %s, word (copy): %s\n", words + l*MAXWORDLENGTH, wordsCopy + l*MAXWORDLENGTH);
+				}
+				printf("\n");
+				usleep(999999);
 			}
 		}
 	}
@@ -307,7 +329,7 @@ int main(){
 	}
 	char testFormat[] = "###bie";
 	printf("format (%s) exists: %d\n", testFormat, formatExists((char*)dictionary, testFormat, DICTIONARYSIZE, MAXWORDLENGTH));
-	printf("formats exist for words: %d\n", formatsExist( (char*)dictionary, words, DICTIONARYSIZE, MAXWORDLENGTH, wordCount ));
+	printf("formats exist for words: %d\n", formatsDoExist( (char*)dictionary, words, DICTIONARYSIZE, MAXWORDLENGTH, wordCount ));
 
 	return 0;
 }
