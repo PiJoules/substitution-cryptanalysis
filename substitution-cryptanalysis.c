@@ -61,6 +61,58 @@ void substituteHints(char* hints, char* str, int hintCount, int hintLength){
 	}
 }
 
+/* Update an array of words witha given cipher */
+void applyCipher(char* words, char cipher[26], char* wordsCopy, int wordCount, int maxWordLength){
+	int i, j, k;
+	for (i = 0; i < wordCount; i++){
+		int len = strlen(words + i*maxWordLength);
+		for (j = 0; j < len; j++){
+			char c = *(words + i*maxWordLength + j);
+			if (isUpper(c)){
+				for (k = 0; k < 26; k++){
+					if (cipher[k] == c){
+						*(wordsCopy + i*maxWordLength + j) = k+'a';
+					}
+				}
+			}
+		}
+	}
+}
+
+/* Check if the format exists in a given dictionary */
+int formatExists(char* dictionary, char* word, int dictionarySize, int maxWordLength){
+	int i, j;
+	int len = strlen(word);
+	for (i = 0; i < dictionarySize; i++){
+		if (strlen( dictionary + i*maxWordLength ) == len){
+			for (j = 0; j < len; j++){
+				char c = *(word+j);
+				if (isLower(c)){
+					char c2 = *(dictionary + i*maxWordLength + j);
+					if (c != c2){
+						break;
+					}
+				}
+				if (j == len-1){
+					return 1; // found a match
+				}
+			}
+		}
+	}
+	return 0;
+}
+
+/* Check if a given array of words exists. */
+int formatsExist(char* dictionary, char* words, int dictionarySize, int maxWordLength, int wordCount){
+	int i;
+	for (i = 0; i < wordCount; i++){
+		if (!formatExists(dictionary, words + i*maxWordLength, dictionarySize, maxWordLength)){
+			return 0;
+		}
+	}
+	return 1;
+}
+
 int main(){
 	/* Read form stdin */
 	const char fileName[] = "words.txt";
@@ -84,6 +136,89 @@ int main(){
 
 	A guess is made from by finding more words that can fit a given format. The guess is
 	assigning the guessed word to its format.
+
+	Need:
+	- copy of original sentence since it will by edited
+	- copy of original list of words (split original sentence)
+
+	Code:
+	// 0 if the key is not used
+	// 1-26 to map the corresponding letter
+	// value represents uppercase CIPHER
+	// key is the lowercase mapped letter
+	char cipher[26] = {0}; 
+	applyCipher(words, cipher);
+	int skips[words.length*MAXWORDLENGTH] = {0};
+	int wordOffets[words.length*MAXWORDLENGTH] = {0};
+	char changes[26] = {0};
+	int lastChangeIndex = 0; // keep track of the last change made to the cipher
+	for (int i = 0; i < words.length; i++){
+		wordOffsets[i+1] = words[i].length + wordOffsets[i];
+	}
+	for (int i = 0; i < words.length; i++){
+		char* word = words[i];
+		for (int j = 0; j < word.length; j++){
+			char c = word[j];
+			if (isUpper(c)){
+				// Get first available cipher
+				int k;
+				for (k = skips[wordOffsets[i]+j]; k < cipher.length; k++){
+					if (!cipher[k]){
+						cipher[k] = c;
+						changes[lastChangeIndex] = k;
+						lastChangeIndex++;
+						break;
+					}
+				}
+
+				// Apply this guess onto the sentence
+				applyCipher(words, cipher);
+
+				// The previously applied cipher does not result in any matches. Go back to that one and try again.
+				// Move back 1 index, but skip 1 this time.
+				if (k == 26){
+					skip[wordOffsets[i]+j] = 0;
+					skip[wordOffsets[i]+j-1]++;
+					// Remove the last change
+					lastChangeIndex--;
+					int lastChange = changes[lastChangeIndex];
+					changes[lastChangeIndex] = 0;
+					cipher[lastChange] = 0;
+					j -= 2;
+				}
+				// Check if the words exist
+				else if (!formatExists(words)){
+					cipher[k] = 0;
+					skip[wordOffsets[i]+j]++;
+					j--; // repeat the current loop to apply a new cipher
+				}
+			}
+		}
+	}
+
+	int formatExists(format){
+		return format in dictionary;
+	}
+
+	int formatsExists(words){
+		foreach (format in words){
+			if (!formarExists(format))
+				return 0;
+		}
+		return 1;
+	}
+
+	void applyCipher(words, cipher){
+		foreach (word in words){
+			for (int i = 0; i < word.length; i++){
+				char c = word[i];
+				if (c in cipher){
+					word[i] = cipher[i]; // or something along these lines
+				}
+			}
+		}
+	}
+
 	 */
 
 	// Create the dictionary
@@ -94,28 +229,85 @@ int main(){
 	substituteHints((char*)hints, text, hintCount, HINTLENGTH);
 
 	// Split the text into words
+	char* words = (char*)malloc(1);
+	int wordCount = 0;
 	char* word = strtok(text, " ");
 	while (word != NULL){
-		char* format = getFormat(word);
-
-		int matchCount;
-		char* matches = wordMatches((char*) dictionary, format, DICTIONARYSIZE, MAXWORDLENGTH, &matchCount);
-		for (i = 0; i < matchCount; i++){
-			printf("match (%s): %s\n", format, matches + i*MAXWORDLENGTH);
-		}
-		free(matches);
-
-		free(format);
-
+		words = (char*)realloc(words, (wordCount+1)*MAXWORDLENGTH*sizeof(char));
+		strncpy(words + wordCount*MAXWORDLENGTH, word, MAXWORDLENGTH);
+		wordCount++;
 		word = strtok(NULL, " ");
 	}
 
-	/* Print stuff */
-	printf("text: %s\n", text);
-	printf("hintCount: %d\n", hintCount);
+	char cipher[26] = {0};
 	for (i = 0; i < hintCount; i++){
-		printf("hint %d: %s\n", i+1, hints[i]);
+		cipher[hints[i][0] - 'a'] = hints[i][1];
 	}
+	int skips[wordCount*MAXWORDLENGTH];
+	memset(skips, 0, wordCount*MAXWORDLENGTH*sizeof(int));
+	int wordOffsets[wordCount*MAXWORDLENGTH];
+	memset(wordOffsets, 0, wordCount*MAXWORDLENGTH*sizeof(int));
+	char changes[26] = {0};
+	int lastChangeIndex = 0; // keep track of the last change made to the cipher
+	for (i = 0; i < wordCount; i++){
+		wordOffsets[i+1] = (int)strlen(words + i*MAXWORDLENGTH) + wordOffsets[i];
+	}
+	char* wordsCopy = malloc( sizeof(char)*wordCount*MAXWORDLENGTH );
+	for (i = 0; i < wordCount; i++){
+		int j;
+		int len = strlen(words + i*MAXWORDLENGTH);
+		for (j = 0; j < len; j++){
+			char c = *(words + i*MAXWORDLENGTH + j);
+			if (isUpper(c)){
+				// Get first available cipher
+				int k;
+				for (k = skips[wordOffsets[i]+j]; k < 26; k++){
+					if (!cipher[k]){
+						cipher[k] = c;
+						changes[lastChangeIndex] = k;
+						lastChangeIndex++;
+						break;
+					}
+				}
+
+				// Apply this guess to the words
+				applyCipher(words, cipher, wordsCopy, wordCount, MAXWORDLENGTH);
+
+				// The previously applied cipher does not result in any matches. Go back to that one and try again.
+				// Move back 1 index, but skip 1 this time.
+				if (k == 26){
+					skips[wordOffsets[i]+j] = 0;
+					skips[wordOffsets[i]+j-1]++;
+					// Remove the last change
+					lastChangeIndex--;
+					int lastChange = changes[lastChangeIndex];
+					changes[lastChangeIndex] = 0;
+					cipher[lastChange] = 0;
+					j -= 2;
+				}
+				// Check if the words exist
+				else if (!formatsExist( (char*)dictionary, wordsCopy, DICTIONARYSIZE, MAXWORDLENGTH, wordCount )){
+					cipher[k] = 0;
+					skips[wordOffsets[i]+j]++;
+					j--; // repeat the current loop to apply a new cipher
+				}
+			}
+		}
+	}
+
+	free(wordsCopy);
+	free(words);
+
+	/* Print stuff */
+	for (i = 0; i < wordCount; i++){
+		printf("word: %s\n", words + i*MAXWORDLENGTH);
+	}
+	for (i = 0; i < 26; i++){
+		printf("(%c,%c) \n", i+'a', cipher[i]);
+	}
+	char testFormat[] = "###bie";
+	printf("format (%s) exists: %d\n", testFormat, formatExists((char*)dictionary, testFormat, DICTIONARYSIZE, MAXWORDLENGTH));
+	printf("formats exist for words: %d\n", formatsExist( (char*)dictionary, words, DICTIONARYSIZE, MAXWORDLENGTH, wordCount ));
 
 	return 0;
 }
