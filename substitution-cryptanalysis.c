@@ -136,6 +136,7 @@ int cipherFromMap(char* before, char* after, char* base, char* newCipher){
  */
 int unscramble(char** ciphers, char* words, int wordCount, int depth, char* cipher, char* dictionary, int dictionarySize, int maxWordLength){
 	if (depth >= wordCount){
+		//printf("this was reached\n");
 		*ciphers = (char*)realloc( *ciphers, 26*sizeof(char) );
 		memcpy(*ciphers, cipher, 26);
 		return 1;
@@ -145,16 +146,19 @@ int unscramble(char** ciphers, char* words, int wordCount, int depth, char* ciph
 	char* possibleWords = (char*)malloc(1);
 	int cipherCount = 0;
 	int matchCount = getPossibleWords(&possibleWords, words + depth*maxWordLength, dictionary, dictionarySize, maxWordLength);
+	//printf("depth %d, %d matches\n", depth, matchCount);
 	for (i = 0; i < matchCount; i++){
 		// option = possibleWords + i*maxWordLength
 		char newCipher[26] = {0};
 		int success = cipherFromMap(words + depth*maxWordLength, possibleWords + i*maxWordLength, cipher, newCipher);
+		//printf("%s\n", success ? "success" : "fail");
 		if (success){
+			printCipher(newCipher);
 			char* solutions = (char*)malloc(1);
 			int solutionCount = unscramble(&solutions, words, wordCount, depth+1, newCipher, (char*)dictionary, dictionarySize, maxWordLength);
 			
 			int j;
-			printf("found %d solutions\n", solutionCount);
+			//printf("found %d solutions\n", solutionCount);
 			for (j = 0; j < solutionCount; j++){
 				*ciphers = (char*)realloc( *ciphers, sizeof(char)*(cipherCount+1)*26 );
 				memcpy(*ciphers + j*26, solutions + j*26, 26);
