@@ -5,12 +5,12 @@ import string
 
 cipher = {}
 
-with open('input/cryptograms.txt') as f:
+with open('samples/sample.txt') as f:
     cipher_text = f.readline().rstrip()
     for _ in range(int(f.readline())):
         key = f.readline().rstrip()
         cipher[key[1].lower()] = key[0].lower()
-word_list = open('input/words.txt').read().split('\n')
+word_list = open('words.txt').read().split('\n')
 
 def get_possible_words(cipher_word, cipher):
     # Make the char pattern. E.g., "glenbolake" would have the regex
